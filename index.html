@@ -80,7 +80,7 @@ body.answering #view{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-s
 .topbar{position:sticky;top:0;z-index:8;background:var(--bg)}
 .modenav{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 0 8px}
 .modenav button{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:inherit;font-size:14px;font-weight:700;padding:6px 2px;line-height:1.25}
-@media (min-width:720px){.modenav{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (min-width:720px){.modenav{grid-template-columns:repeat(5,minmax(0,1fr))}}
 .modenav button.on{background:var(--pri);border-color:var(--pri);color:#fff}
 .ref-note{margin:0 2px 10px;font-size:13px;line-height:1.55;color:var(--mut)}
 .ref-tools{position:sticky;top:var(--topbar-h,96px);z-index:7;background:var(--bg);padding:2px 0 8px}
@@ -129,6 +129,38 @@ a.ref-a{color:var(--pri);font-weight:700}
 .review-copy{white-space:pre-wrap}
 #reviewFeedback{scroll-margin-top:var(--topbar-h,110px)}
 #reviewDraft{display:block;width:100%;min-height:100px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg);font:inherit;resize:vertical}
+.paper-intro h2,.paper-toolbar h2{margin:0}
+.paper-intro p,.paper-note p{margin:6px 0}
+.paper-progress{font-weight:700;margin-top:10px}
+.paper-list-card h3{margin:0}
+.paper-list-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.paper-status{font-size:14px;font-weight:700;text-align:right}
+.paper-list-actions{display:flex;gap:8px;margin-top:12px}
+.paper-list-actions .btn{flex:1}
+.paper-history{font-size:13px;color:var(--mut);margin-top:10px}
+.paper-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.paper-toolbar .mut{margin-top:4px}
+.paper-note{color:var(--mut)}
+.paper-section h3{font-size:17px;margin:18px 4px 10px}
+.paper-question{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 10px;overflow-wrap:anywhere}
+.paper-q-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.paper-q-head span{font-size:13px;color:var(--mut)}
+.paper-question-prompt,.paper-subparts{white-space:pre-wrap}
+.paper-subparts{padding-left:24px}
+.paper-subparts li{margin-top:6px}
+.paper-table-wrap{overflow-x:auto;margin-top:10px}
+.paper-table{font-size:14px}
+.paper-answer{border-top:1px solid var(--line);margin-top:14px;padding-top:10px;white-space:pre-wrap}
+.paper-answer h4{margin:8px 0 4px}
+.paper-rubric{padding-left:20px;margin:4px 0}
+.paper-rubric li{margin:4px 0}
+.paper-math{overflow-x:auto;margin:6px 0}
+.paper-grade-entry{margin-top:12px}
+.paper-score-row{display:flex;align-items:center;gap:9px}
+.paper-score-row input{width:120px;min-height:50px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg);font:inherit;font-size:20px}
+.paper-grade-entry>.btn{margin-top:10px}
+.paper-save-success{font-weight:700;color:var(--ok);margin-top:8px}
+#paperList{scroll-margin-top:100px}
 </style>
 </head>
 <body>
@@ -140,6 +172,7 @@ a.ref-a{color:var(--pri);font-weight:700}
 <button type="button" id="navFormula">公式大全</button>
 <button type="button" id="navConcept">知识点大全</button>
 <button type="button" id="navExercise">课后题解答</button>
+<button type="button" id="navPapers">模拟卷</button>
 </nav>
 </div>
 <div id="acct" class="acct">
@@ -172,6 +205,18 @@ a.ref-a{color:var(--pri);font-weight:700}
 <script src="exercises.js"></script>
 <script src="review-state.js"></script>
 <script src="review-prompts.js"></script>
+<script src="papers-data.js"></script>
+<script src="papers/01.js"></script>
+<script src="papers/02.js"></script>
+<script src="papers/03.js"></script>
+<script src="papers/04.js"></script>
+<script src="papers/05.js"></script>
+<script src="papers/06.js"></script>
+<script src="papers/07.js"></script>
+<script src="papers/08.js"></script>
+<script src="papers/09.js"></script>
+<script src="papers/10.js"></script>
+<script src="papers.js"></script>
 <script src="vendor/supabase-js.min.js"></script>
 <script>
 (function(){
@@ -185,8 +230,8 @@ function chKey(q){return q.book+'|'+q.chapter;}
 function chLabel(k){var p=k.split('|');return p[0]+' · '+p[1];}
 var L='ABCD';
 function pickLabel(p){return p===0||p===1||p===2||p===3?L[p]:'不会';}
-function blank(){return {v:1,rec:{},wrong:{},filter:'all',cur:null,wfilter:'all',created:Date.now()};}
-function load(){try{var s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.rec&&s.wrong)return s;}catch(e){}return blank();}
+function blank(){return {v:1,rec:{},wrong:{},paperAttempts:{},filter:'all',cur:null,wfilter:'all',created:Date.now()};}
+function load(){try{var s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.v===1&&s.rec&&s.wrong)return normalizeState(s);}catch(e){}return blank();}
 var S=load();
 var view=document.getElementById('view'),dock=document.getElementById('dock'),dockIn=document.getElementById('dockIn'),homeBtn=document.getElementById('homeBtn');
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -200,7 +245,7 @@ function mkBtn(txt,cls,fn,id){var b=document.createElement('button');b.type='but
 var mode='home',curQ=null,answered=false,shownAt=0,wrongQueue=null,keyNext=null;
 homeBtn.addEventListener('click',function(){home();});
 function setNav(which){
- var map={quiz:'navQuiz',formula:'navFormula',concept:'navConcept',exercise:'navExercise'};
+ var map={quiz:'navQuiz',formula:'navFormula',concept:'navConcept',exercise:'navExercise',papers:'navPapers'};
  Object.keys(map).forEach(function(k){
   var b=document.getElementById(map[k]);
   if(!b)return;
@@ -226,10 +271,47 @@ function openExercise(){
  else view.innerHTML='<div class="card">课后题目录没有加载。</div>';
  top();
 }
+function localDateKey(){
+ var d=new Date();
+ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+function openPapers(){
+ mode='papers';keyNext=null;document.body.classList.remove('answering');
+ homeBtn.classList.remove('hide');setNav('papers');setDock(null);
+ window.PaperPractice.open(view,{
+  list:function(id){return Array.isArray(S.paperAttempts[id])?S.paperAttempts[id]:[];},
+  start:function(id){
+   if(!/^(0[1-9]|10)$/.test(id))return null;
+   if(!S.paperAttempts[id])S.paperAttempts[id]=[];
+   var now=Date.now(),day=localDateKey();
+   var previous=S.paperAttempts[id].reduce(function(latest,item){return Math.max(latest,item.updatedAt||item.startedAt||0);},0);
+   now=Math.max(now,previous+1);
+   var attempt={id:String(now)+'-'+Math.random().toString(36).slice(2,8),startedAt:now,startedOn:day,updatedAt:now,draftScore:null,score:null,finishedAt:null,finishedOn:null};
+   S.paperAttempts[id].push(attempt);
+   if(!save()){S.paperAttempts[id].pop();return null;}
+   return attempt;
+  },
+  draft:function(id,attemptId,score){
+   var attempt=(S.paperAttempts[id]||[]).find(function(item){return item.id===attemptId;});
+   if(!attempt)return false;
+   attempt.draftScore=score;attempt.updatedAt=Math.max(Date.now(),attempt.updatedAt+1);
+   return save();
+  },
+  record:function(id,attemptId,score){
+   var attempt=(S.paperAttempts[id]||[]).find(function(item){return item.id===attemptId;});
+   if(!attempt)return false;
+   var now=Math.max(Date.now(),attempt.updatedAt+1);
+   attempt.score=score;attempt.finishedAt=now;attempt.finishedOn=localDateKey();attempt.updatedAt=now;attempt.draftScore=null;
+   return save();
+  }
+ });
+ top();
+}
 document.getElementById('navQuiz').addEventListener('click',function(){if(mode!=='home')home();});
 document.getElementById('navFormula').addEventListener('click',function(){openRef('formula');});
 document.getElementById('navConcept').addEventListener('click',function(){openRef('concept');});
 document.getElementById('navExercise').addEventListener('click',function(){openExercise();});
+document.getElementById('navPapers').addEventListener('click',function(){openPapers();});
 function top(){window.scrollTo(0,0);}
 // ---------- HOME ----------
 function home(){
@@ -241,6 +323,7 @@ function home(){
  '<div class="card stack"><label class="mut" for="fsel">刷题范围（按书/章节筛选）</label><select id="fsel">'+opts+'</select></div>'+
  '<div class="stack"><button class="btn pri" type="button" id="goBtn">'+(st.done?'继续随机刷':'开始随机刷')+'</button>'+
  '<button class="btn" type="button" id="reviewHome">隔日闭卷变式 · 今日到期 '+ReviewState.dueIds(S).length+' 题</button>'+
+ '<button class="btn" type="button" id="papersHome">模拟卷 · 10 套，做完自评并记分</button>'+
  '<div class="grid2"><button class="btn" type="button" id="formulaHome">公式大全</button><button class="btn" type="button" id="conceptHome">知识点大全</button></div>'+
 '<button class="btn" type="button" id="exerciseHome">课后题解答</button>'+
  '<div class="grid2"><button class="btn" type="button" id="wbBtn">错题集（'+wn+'）</button><button class="btn" type="button" id="stBtn">章节统计</button></div>'+
@@ -250,6 +333,7 @@ function home(){
  document.getElementById('fsel').addEventListener('change',function(e){S.filter=e.target.value;S.cur=null;save();home();});
  document.getElementById('goBtn').addEventListener('click',function(){startQuiz();});
  document.getElementById('reviewHome').addEventListener('click',openReview);
+ document.getElementById('papersHome').addEventListener('click',openPapers);
  document.getElementById('formulaHome').addEventListener('click',function(){openRef('formula');});
  document.getElementById('conceptHome').addEventListener('click',function(){openRef('concept');});
  document.getElementById('exerciseHome').addEventListener('click',function(){openExercise();});
@@ -424,7 +508,7 @@ function exportP(){
 document.getElementById('importFile').addEventListener('change',function(e){var f=e.target.files&&e.target.files[0];if(!f)return;var r=new FileReader();
  r.onload=function(){try{var o=JSON.parse(r.result);var s=o.state||o;if(!s||s.v!==1||typeof s.rec!=='object'||typeof s.wrong!=='object')throw 0;
   Object.keys(s.rec).forEach(function(k){if(!BY[k])delete s.rec[k];});Object.keys(s.wrong).forEach(function(k){if(!BY[k])delete s.wrong[k];});
-  s.cur=null;adoptState(s,true);toast('导入成功：已做 '+Object.keys(S.rec).length+' 题');home();}catch(err){toast('导入失败：文件格式不对');}
+  s=normalizeState(s);s.cur=null;adoptState(s,true);toast('导入成功：已做 '+Object.keys(S.rec).length+' 题');home();}catch(err){toast('导入失败：文件格式不对');}
   e.target.value='';};r.readAsText(f);});
 // ---------- ACCOUNT / SYNC ----------
 var SB_URL='https://tgelcvzmzhfdthlgvdeu.supabase.co';
@@ -440,7 +524,39 @@ function byteSize(obj){var s=JSON.stringify(obj);try{if(window.TextEncoder)retur
 function wantsReplace(){try{return localStorage.getItem(REPLACE_KEY)==='1';}catch(e){return false;}}
 function clearReplace(){try{localStorage.removeItem(REPLACE_KEY);}catch(e){}}
 function markReplace(){if(!currentSession)return;try{localStorage.setItem(REPLACE_KEY,'1');}catch(e){}}
-function writeLocal(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast('保存失败：浏览器存储不可用');}}
+function writeLocal(){try{localStorage.setItem(KEY,JSON.stringify(S));return true;}catch(e){toast('保存失败：浏览器存储不可用');return false;}}
+function localDateFromTime(time){
+ var d=new Date(time);
+ if(!isFinite(d.getTime()))return '';
+ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+}
+function validLocalDate(value){return typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!isNaN(Date.parse(value+'T12:00:00'));}
+function cleanPaperScore(value){
+ if(value==null||value==='')return null;
+ var score=Number(value);
+ return isFinite(score)&&score>=0&&score<=150?score:null;
+}
+function normalizePaperAttempts(raw){
+ var result={};
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return result;
+ Object.keys(raw).forEach(function(paperId){
+  if(!/^(0[1-9]|10)$/.test(paperId)||!Array.isArray(raw[paperId]))return;
+  var byId={};
+  raw[paperId].forEach(function(item){
+   if(!item||typeof item!=='object'||typeof item.id!=='string'||!item.id||item.id.length>80)return;
+   var startedAt=num(item.startedAt,0),finishedAt=num(item.finishedAt,0),updatedAt=num(item.updatedAt,startedAt);
+   var score=cleanPaperScore(item.score),draftScore=cleanPaperScore(item.draftScore);
+   var startedOn=validLocalDate(item.startedOn)?item.startedOn:localDateFromTime(startedAt);
+   var finishedOn=score!=null?(validLocalDate(item.finishedOn)?item.finishedOn:localDateFromTime(finishedAt)):null;
+   var clean={id:item.id,startedAt:startedAt,startedOn:startedOn,updatedAt:updatedAt,draftScore:draftScore,score:score,finishedAt:score!=null?finishedAt:null,finishedOn:finishedOn};
+   if(!startedAt&&!startedOn)return;
+   var previous=byId[item.id];
+   if(!previous||clean.updatedAt>previous.updatedAt)byId[item.id]=clean;
+  });
+  result[paperId]=Object.keys(byId).map(function(id){return byId[id];}).sort(function(a,b){return a.startedAt-b.startedAt;});
+ });
+ return result;
+}
 function normalizeState(raw){
  var s=raw;
  if(typeof s==='string'){try{s=JSON.parse(s);}catch(e){s=null;}}
@@ -450,7 +566,7 @@ function normalizeState(raw){
  b.filter=s.filter==null||s.filter===''?'all':String(s.filter);
  b.wfilter=s.wfilter==null||s.wfilter===''?'all':String(s.wfilter);
  b.cur=s.cur==null||s.cur===''?null:s.cur;
- b.rec={};b.wrong={};
+ b.rec={};b.wrong={};b.paperAttempts=normalizePaperAttempts(s.paperAttempts);
  if(s.rec&&typeof s.rec==='object')Object.keys(s.rec).forEach(function(id){if(!BY[id]||!s.rec[id]||typeof s.rec[id]!=='object')return;b.rec[id]=JSON.parse(JSON.stringify(s.rec[id]));});
  if(s.wrong&&typeof s.wrong==='object')Object.keys(s.wrong).forEach(function(id){if(!BY[id]||!s.wrong[id]||typeof s.wrong[id]!=='object')return;b.wrong[id]=JSON.parse(JSON.stringify(s.wrong[id]));});
  if(b.cur!=null&&!BY[b.cur])b.cur=null;
@@ -519,6 +635,22 @@ function mergeWrongRec(a,b){
  });
  return out;
 }
+function mergePaperAttempts(local,cloud){
+ var left=normalizePaperAttempts(local),right=normalizePaperAttempts(cloud),result={};
+ var paperIds={};
+ Object.keys(left).forEach(function(id){paperIds[id]=1;});
+ Object.keys(right).forEach(function(id){paperIds[id]=1;});
+ Object.keys(paperIds).forEach(function(paperId){
+  var attempts={};
+  (left[paperId]||[]).concat(right[paperId]||[]).forEach(function(item){
+   var old=attempts[item.id],stamp=item.updatedAt||item.startedAt||0;
+   var oldStamp=old&&(old.updatedAt||old.startedAt)||0;
+   if(!old||stamp>oldStamp||(stamp===oldStamp&&JSON.stringify(item)>JSON.stringify(old)))attempts[item.id]=item;
+  });
+  result[paperId]=Object.keys(attempts).map(function(id){return attempts[id];}).sort(function(a,b){return a.startedAt-b.startedAt;});
+ });
+ return result;
+}
 function mergeWrongs(local,cloud){
  var ids={},out={};
  Object.keys(local.wrong||{}).forEach(function(k){ids[k]=1;});
@@ -545,6 +677,7 @@ function mergeState(localRaw,cloudRaw,cloudRow){
  out.created=Math.min(num(local.created,Date.now()),num(cloud.created,Date.now()));
  out.rec=mergeRecs(local.rec,cloud.rec);
  out.wrong=mergeWrongs(local,cloud);
+ out.paperAttempts=mergePaperAttempts(local.paperAttempts,cloud.paperAttempts);
  Object.keys(out.wrong).forEach(function(id){var review=out.rec[id]&&out.rec[id].review;if(review&&review.stage===3)delete out.wrong[id];});
  var prefs=preferLocalPrefs(local,cloud,cloudRow)?local:cloud;
  out.filter=prefs.filter||'all';
@@ -683,10 +816,11 @@ function adoptState(next,overwriteCloud){
 function save(){
  editGen++;
  if(S)S.updatedAt=Date.now();
- writeLocal();
- if(!currentSession||!sb)return;
- if(!syncReady||mergeRunning){queueMerge();return;}
+ if(!writeLocal())return false;
+ if(!currentSession||!sb)return true;
+ if(!syncReady||mergeRunning){queueMerge();return true;}
  schedulePush();
+ return true;
 }
 function friendlyAuth(message){
  var m=String(message||''),l=m.toLowerCase();
